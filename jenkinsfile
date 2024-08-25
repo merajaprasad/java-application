@@ -1,0 +1,140 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    environment {
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+
+
+    stages {
+        stage ('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/merajaprasad/blogging-app-deployment.git'
+            }
+        }
+
+        stage ('Compile') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+
+        stage ('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage ('Trivy FS Scan') {
+            steps {
+                sh 'trivy fs --format table -o fs.html . '
+            }
+        }
+
+        stage ('sonarqube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Bloggingapp -Dsonar.projectKey=Bloggingapp \
+                    -Dsonar.java.binaries=target '''
+                }
+            }
+        }
+        stage ('Build') {
+            steps {
+                sh 'mvn package'
+                sh 'ls /var/lib/jenkins/workspace/${JOB_NAME}/target/'
+                sleep 20
+            }
+        }
+
+        stage ('Publish Artifacts') {
+            steps {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                    sh 'mvn deploy'
+                }
+
+            }
+        }
+
+        stage ('Docker Image Build and Tag') {
+            steps {
+                script {
+                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    sh 'docker build -t merajaprasd/bloggingapp:latest . '
+
+                }
+
+                }
+
+            }
+        }
+
+        stage ('Trivy Image Scan') {
+            steps {
+                sh 'trivy image --format table -o image.html merajaprasd/bloggingapp:latest'
+            }
+        }
+
+        stage ('Docker push Image') {
+            steps {
+                script {
+                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    sh 'docker push merajaprasd/bloggingapp:latest'
+
+                }
+
+                }
+            }
+        }
+
+        stage ('kubernetes Deploy') {
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'bloggingapp', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://16E0114C64EC3B70ADEF36176449E4EE.gr7.us-west-2.eks.amazonaws.com') {
+                    sh "kubectl apply -f deployment-service.yml"
+                    sleep 20
+                }
+            }
+        }
+
+        stage ('kubernetes Varify') {
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'bloggingapp', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://16E0114C64EC3B70ADEF36176449E4EE.gr7.us-west-2.eks.amazonaws.com') {
+                    sh "kubectl get pods"
+                    sh "kubectl get svc"
+                }
+            }
+        }
+
+    }
+
+    post {
+    always {
+        emailext(
+            attachLog: true,
+            subject: "Jenkins Pipeline: ${currentBuild.fullDisplayName} - ${currentBuild.currentResult}",,
+            body: """\
+                <p>Hello,</p>
+                <p>The Jenkins pipeline <strong>${currentBuild.fullDisplayName}</strong> has been completed.</p>
+                <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
+                <p>You can review the details of the build by visiting the following link:</p>
+                <p><a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                <p>For further information, please refer to the attached build log files.</p>
+                <p>Best regards,</p>
+                <p>Jenkins Server</p>
+            """,
+            to: 'rajaprasad.rp731@gmail.com',
+            from: 'jenkins@example.com',
+            replyTo: 'jenkins@example.com',
+            attachmentsPattern: 'fs.html,image.html'
+
+        )
+        }
+
+    }
+
+}
