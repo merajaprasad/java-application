@@ -1,94 +1,80 @@
 pipeline {
     agent any
-
+    
     tools {
         jdk 'jdk17'
         maven 'maven3'
     }
-
     environment {
-        SCANNER_HOME= tool 'sonar-scanner'
+        SCANNER_HOME=tool 'sonar-scanner'
+        APP_NAME = 'javabloggingapp'
+        RELEASE = '1.31.0'
+        IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
+        DOCKER_USR = "merajaprasd"
+        DOCKERHUB_CREDENTIALS = credentials('docker-cred')
     }
-
-
-    stages {
-        stage ('Git Checkout') {
-            steps {
+    
+    stages{
+        stage('cleanup WorkSpace') {
+            steps{
+                cleanWs()
+            }           
+        }
+        
+        stage('Git Checkout'){
+            steps{
                 git branch: 'main', url: 'https://github.com/merajaprasad/blogging-app-deployment.git'
             }
         }
 
-        stage ('Compile') {
-            steps {
+        stage('mvn Compile'){
+            steps{
                 sh 'mvn compile'
             }
         }
 
-        stage ('Test') {
-            steps {
+        stage('mvn test'){
+            steps{
                 sh 'mvn test'
             }
         }
-
-        stage ('Trivy FS Scan') {
-            steps {
-                sh 'trivy fs --format table -o fs.html . '
+        stage('trivy FS scan'){
+            steps{
+                sh 'trivy fs --format table -o fs.html .'
             }
         }
-
-        stage ('sonarqube Analysis') {
-            steps {
+        stage('Sonarqube Analysis'){
+            steps{
                 withSonarQubeEnv('sonar-server') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Bloggingapp -Dsonar.projectKey=Bloggingapp \
-                    -Dsonar.java.binaries=target '''
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=bloggingapp -Dsonar.projectKey=bloggingapp \
+                    -Dsonar.java.binaries=target'''
                 }
             }
         }
-        stage ('Build') {
-            steps {
-                sh 'mvn package'
+        
+        stage('mvn Build'){
+            steps{
+                sh 'mvn clean package'
                 sh 'ls /var/lib/jenkins/workspace/${JOB_NAME}/target/'
-                sleep 20
+                sh 'sleep 20'
             }
         }
-
-        stage ('Publish Artifacts') {
-            steps {
-                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
-                    sh 'mvn deploy'
-                }
-
+        stage('Docker Image Build') {
+            steps{
+                sh 'docker build -t ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG} .'
             }
         }
-
-        stage ('Docker Image Build and Tag') {
-            steps {
-                script {
-                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                    sh 'docker build -t merajaprasd/bloggingapp:latest . '
-
-                }
-
-                }
-
+        
+        stage('Trivy Image Scan') {
+            steps{
+                sh 'trivy image --format table -o image.html ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}'
             }
         }
-
-        stage ('Trivy Image Scan') {
-            steps {
-                sh 'trivy image --format table -o image.html merajaprasd/bloggingapp:latest'
-            }
-        }
-
-        stage ('Docker push Image') {
-            steps {
-                script {
-                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                    sh 'docker push merajaprasd/bloggingapp:latest'
-
-                }
-
-                }
+        stage('Docker Image Push') {
+            steps{
+                sh 'docker images'
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                sh 'docker push ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}'
             }
         }
 
@@ -100,7 +86,6 @@ pipeline {
                 }
             }
         }
-
         stage ('kubernetes Varify') {
             steps {
                 withKubeConfig(caCertificate: '', clusterName: 'bloggingapp', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://16E0114C64EC3B70ADEF36176449E4EE.gr7.us-west-2.eks.amazonaws.com') {
