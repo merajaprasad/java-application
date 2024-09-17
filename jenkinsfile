@@ -3,22 +3,22 @@ pipeline {
     
     tools {
         jdk 'jdk17'
-        maven 'maven3'
+        maven 'mvn'
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
         APP_NAME = 'javabloggingapp'
-        RELEASE = '1.31.0'
+        RELEASE = '1.31.1'
         IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
         DOCKER_USR = "merajaprasd"
         DOCKERHUB_CREDENTIALS = credentials('docker-cred')
     }
     
     stages{
-        stage('cleanup WorkSpace') {
+        stage('Cleanup WorkSpace') {
             steps{
                 cleanWs()
-            }           
+            }            
         }
         
         stage('Git Checkout'){
@@ -26,24 +26,22 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/merajaprasad/blogging-app-deployment.git'
             }
         }
-
-        stage('mvn Compile'){
+        stage('MVN Compile'){
             steps{
                 sh 'mvn compile'
             }
         }
-
-        stage('mvn test'){
+        stage('MVN test'){
             steps{
                 sh 'mvn test'
             }
         }
-        stage('trivy FS scan'){
+        stage('Trivy FS Scan'){
             steps{
                 sh 'trivy fs --format table -o fs.html .'
             }
         }
-        stage('Sonarqube Analysis'){
+        stage('SonarQube Analysis'){
             steps{
                 withSonarQubeEnv('sonar-server') {
                     sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=bloggingapp -Dsonar.projectKey=bloggingapp \
@@ -52,11 +50,19 @@ pipeline {
             }
         }
         
-        stage('mvn Build'){
+        stage('MVN Build'){
             steps{
                 sh 'mvn clean package'
                 sh 'ls /var/lib/jenkins/workspace/${JOB_NAME}/target/'
                 sh 'sleep 20'
+            }
+        }
+        
+        stage('Publish Artifacts') {
+            steps{
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'mvn', mavenSettingsConfig: '', traceability: true) {
+                    sh 'mvn deploy'
+                }
             }
         }
         stage('Docker Image Build') {
