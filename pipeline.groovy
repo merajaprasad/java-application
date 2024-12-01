@@ -38,7 +38,7 @@ pipeline {
         stage ('Static Analysis') {
             steps {
                 echo "Running Software Composition Analysis using OWASP Dependency-Check ..."
-                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP-Check'
+                dependencyCheck additionalArguments: '--scan ./ --format XML', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
