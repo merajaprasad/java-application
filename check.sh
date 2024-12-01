@@ -11,13 +11,13 @@ else
    echo "================="
 fi
 
-grep "CRITICAL" trivyresults.txt > /dev/null
+grep "CRITICAL" trivyresults.html > /dev/null
 if [ $? -ne "0" ]; then
    echo "============================================================="
-   echo "Docker Image adamtravis/democicd:latest is ready for testing"
+   echo "Docker Image java-application is ready for testing"
    echo "============================================================="
 else
    echo "============================================================="
-   echo "Docker Image adamtravis/democicd:latest has vulnerabilities!!"
+   echo "Docker Image java-application has vulnerabilities!!"
    echo "============================================================="
 fi
