@@ -5,13 +5,18 @@ pipeline {
         jdk "jdk17"
         maven "maven3"
     }
+
+    parameters{
+      string(name: 'RELEASE_NAME', defaultValue: '', description: 'tagging docker image')
+    }
+
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
-        APP_NAME = 'java-application'
-        RELEASE =  'latest'
-        IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
+        APP_NAME = "java-application"
         DOCKER_USR = "merajaprasd"
         DOCKERHUB_CREDENTIALS = credentials('docker-cred')
+        RELEASE =  "${params.RELEASE_NAME}"
+        IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
     }
 
     stages {
@@ -20,21 +25,25 @@ pipeline {
                 cleanWs()
             }
         }
+
         stage ('Checkout SCM') {
             steps {
                 git branch: 'main' , url: 'https://github.com/merajaprasad/java-application.git'
             }
         }
+
         stage ('mvn compile') {
             steps {
                 sh "mvn compile"
             }
         }
-        stage ('mvn test') {
+
+        stage ('Unit Tests') {
             steps {
                 sh 'mvn test'
             }
         }
+
         stage ('Static Analysis') {
             steps {
                 echo "Running Software Composition Analysis using OWASP Dependency-Check ..."
@@ -42,11 +51,13 @@ pipeline {
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
+
         stage('Trivy FS Scan'){
             steps{
                 sh 'trivy fs --format table -o fs.html .'
             }
         }
+
         stage ('SAST') {
             steps {
                 echo "Running Static application security testing using SonarQube Scanner ..."
@@ -60,7 +71,7 @@ pipeline {
 
         stage('QualityGates') {
             steps { 
-                echo "Running Quality Gates to verify the code quality"
+                echo "Running Quality Gates to verify the code quality...."
                 script {
                 timeout(time: 1, unit: 'MINUTES') {
                     def qg = waitForQualityGate()
@@ -78,8 +89,10 @@ pipeline {
                 sh "mvn clean package"
             }
         }
+
         stage('Publish Artifacts') {
             steps{
+                echo "artifact publishing to Nexus Repo..."
                 withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'mvn', mavenSettingsConfig: '', traceability: true) {
                     sh 'mvn deploy'
                 }
@@ -88,16 +101,20 @@ pipeline {
 
         stage ('Build Image') {
             steps {
-                echo "Build Docker Image"
-                sh "docker build -t ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG} ."
+                echo "Building Docker Image..."
+                script {
+                    sh "docker build -t ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG} ."
+                }                    
             }
         }
+
         stage ('Scan Image') {
             steps {
                 echo "Scanning Image for Vulnerabilities"
                 sh "trivy image --format table -o trivyresults.html ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
             }
         }
+
         stage('Docker Image Push') {
             steps{
                 sh "docker images"
@@ -105,6 +122,7 @@ pipeline {
                 sh "docker push ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
             }
         }
+
         stage ('Smoke Test') {
             steps {
                 echo "Smoke Test the Image"
