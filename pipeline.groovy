@@ -7,6 +7,11 @@ pipeline {
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
+        APP_NAME = 'java-application'
+        RELEASE =  'latest'
+        IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
+        DOCKER_USR = "merajaprasd"
+        DOCKERHUB_CREDENTIALS = credentials('docker-cred')
     }
 
     stages {
@@ -35,6 +40,11 @@ pipeline {
                 echo "Running Software Composition Analysis using OWASP Dependency-Check ..."
                 dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Trivy FS Scan'){
+            steps{
+                sh 'trivy fs --format table -o fs.html .'
             }
         }
         stage ('SAST') {
@@ -68,23 +78,37 @@ pipeline {
                 sh "mvn clean package"
             }
         }
+        stage('Publish Artifacts') {
+            steps{
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'mvn', mavenSettingsConfig: '', traceability: true) {
+                    sh 'mvn deploy'
+                }
+            }
+        }
 
         stage ('Build Image') {
             steps {
                 echo "Build Docker Image"
-                sh "docker build -t merajaprasd/java-application:latest ."
+                sh "docker build -t ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG} ."
             }
         }
         stage ('Scan Image') {
             steps {
                 echo "Scanning Image for Vulnerabilities"
-                sh "trivy image --format table -o trivyresults.html merajaprasd/java-application:latest"
+                sh "trivy image --format table -o trivyresults.html ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
+            }
+        }
+        stage('Docker Image Push') {
+            steps{
+                sh "docker images"
+                sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"
+                sh "docker push ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
             }
         }
         stage ('Smoke Test') {
             steps {
                 echo "Smoke Test the Image"
-                sh "docker run -d --name smokerun -p 8080:8080 merajaprasd/java-application:latest"
+                sh "docker run -d --name smokerun -p 8080:8080 ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
                 sh "sleep 90; ./check.sh"
             }
         }
