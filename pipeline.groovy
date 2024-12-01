@@ -37,7 +37,7 @@ pipeline {
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
-        stage (SAST) {
+        stage ('SAST') {
             steps {
                 echo "Running Static application security testing using SonarQube Scanner ..."
                 withSonarQubeEnv('sonar-server') {
@@ -85,7 +85,7 @@ pipeline {
             steps {
                 echo "Smoke Test the Image"
                 sh "docker run -d --name smokerun -p 8080:8080 merajaprasd/java-application:latest"
-                sh "sleep 90; sudo bash check.sh"
+                sh "sleep 90; ./check.sh"
             }
         }
 
