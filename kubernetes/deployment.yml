@@ -13,8 +13,8 @@ spec:
         app: bloggingapp
     spec:
       containers:
-        - name: java-application:oldest
-          image: merajaprasd/java-application:oldest
+        - name: java-application:latest
+          image: merajaprasd/java-application:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
