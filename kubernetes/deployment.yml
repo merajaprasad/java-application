@@ -13,7 +13,7 @@ spec:
         app: bloggingapp
     spec:
       containers:
-        - name: java-application:1.2.3
+        - name: blog-app
           image: merajaprasd/java-application:1.2.3
           imagePullPolicy: Always
           ports:
