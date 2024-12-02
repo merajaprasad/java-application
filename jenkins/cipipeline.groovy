@@ -19,6 +19,17 @@ pipeline {
     }
 
     stages {
+        stage ("Validation") {
+            steps {
+                script {
+                    if (params.IMAGE_TAG == '') {
+                        echo "ERROR: IMAGE_TAG must be provided and cannot be empty."
+                        error ("IMAGE_TAG must be provided and cannot be empty.")
+                    }
+                }
+            }
+        }
+        
         stage ('clean WS'){
             steps {
                 cleanWs()
@@ -72,12 +83,12 @@ pipeline {
             steps { 
                 echo "Running Quality Gates to verify the code quality...."
                 script {
-                timeout(time: 1, unit: 'MINUTES') {
-                    def qg = waitForQualityGate()
-                    if (qg.status != 'OK') {
-                    error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    timeout(time: 1, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        }
                     }
-                }
                 }
             }
         }
