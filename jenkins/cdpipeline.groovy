@@ -14,7 +14,7 @@ pipeline {
         }
         stage ("Checkout Code") {
             steps {
-                git branch: 'main', url: 'https://github.com/merajaprasad/java-application.git'
+                git branch: 'dev', url: 'https://github.com/merajaprasad/java-application.git'
             }
         }
 
@@ -40,7 +40,7 @@ pipeline {
                         git commit -m "updating image tag in deploymentfile"
                         
                         echo "Pushing changes to github: "
-                        git push https://github.com/merajaprasad/java-application.git main
+                        git push https://github.com/merajaprasad/java-application.git dev
                     '''
                     }
                 }
