@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: blog-app
-          image: merajaprasd/java-application:1.20
+          image: merajaprasd/java-application:1.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
