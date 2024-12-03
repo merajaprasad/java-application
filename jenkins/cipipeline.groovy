@@ -38,7 +38,7 @@ pipeline {
 
         stage ('Checkout SCM') {
             steps {
-                git branch: 'main' , url: 'https://github.com/merajaprasad/java-application.git'
+                git branch: 'dev' , url: 'https://github.com/merajaprasad/java-application.git'
             }
         }
 
@@ -103,7 +103,7 @@ pipeline {
         stage('Publish Artifacts') {
             steps{
                 echo "artifact publishing to Nexus Repo..."
-                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'mvn', mavenSettingsConfig: '', traceability: true) {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
                     sh 'mvn deploy'
                 }
             }
@@ -145,7 +145,7 @@ pipeline {
     post {
         success {
             echo "Trigger CD Pipeline"
-            build job: "java-application-cd", parameters: [string(name: 'IMAGE_TAG', value: "${params.IMAGE_TAG}")]
+            build job: "dev-cd-pipeline", parameters: [string(name: 'IMAGE_TAG', value: "${params.IMAGE_TAG}")]
         }
     }
 }
