@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters{
-      string(name: 'IMAGE_TAG', defaultValue: '', description: 'Please Enter the Image Tag to Deploy?')
+      string(name: 'IMAGE_TAG', defaultValue: '', description: 'Please provide the Image Tag to Deploy in prod?')
     }
 
 
