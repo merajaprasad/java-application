@@ -136,7 +136,7 @@ pipeline {
         stage ('Smoke Test') {
             steps {
                 echo "Smoke Test the Image"
-                sh "docker run -d --name smokerun -p 8080:8080 ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
+                sh "docker run -d --name smokerun -p 8080:8080 --rm ${DOCKER_USR}/${APP_NAME}:${IMAGE_TAG}"
                 sh "sleep 90; ./check.sh"
             }
         }
