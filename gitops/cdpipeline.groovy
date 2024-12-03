@@ -7,6 +7,16 @@ pipeline {
 
 
     stages {
+        stage ("Validation") {
+            steps {
+                script {
+                    if (params.IMAGE_TAG == '') {
+                        echo "ERROR: Please provide the latest IMAGE_TAG to deploy in Prod."
+                        error ("Please provide the latest IMAGE_TAG to deploy in Prod.")
+                    }
+                }
+            }
+        } 
         stage ('clean WS'){
             steps {
                 cleanWs()
