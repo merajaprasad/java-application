@@ -7,6 +7,17 @@ pipeline {
 
 
     stages {
+        stage ("Validation") {
+            steps {
+                script {
+                    if (params.IMAGE_TAG == '') {
+                        echo "ERROR: IMAGE_TAG must be provided and cannot be empty."
+                        error ("IMAGE_TAG must be provided and cannot be empty.")
+                    }
+                }
+            }
+        }    
+        
         stage ('clean WS'){
             steps {
                 cleanWs()
