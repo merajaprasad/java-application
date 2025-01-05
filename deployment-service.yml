@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bloggingapp-deployment
+  name: java-deployment
 spec:
   selector:
     matchLabels:
@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bloggingapp
-          image: merajaprasd/bloggingapp:latest # Updated image to private DockerHub image
+          image: merajaprasd/java-app:6 # Updated image to private DockerHub image
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -24,7 +24,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bloggingapp-svc
+  name: java-svc
 spec:
   selector:
     app: bloggingapp
