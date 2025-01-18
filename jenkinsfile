@@ -7,7 +7,7 @@ pipeline {
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
-        APP_NAME = 'javabloggingapp'
+        APP_NAME = 'java-app'
         RELEASE = '1.31.1'
         IMAGE_TAG  = "${RELEASE}-${BUILD_NUMBER}"
         DOCKER_USR = "merajaprasd"
@@ -23,7 +23,7 @@ pipeline {
         
         stage('Git Checkout'){
             steps{
-                git branch: 'main', url: 'https://github.com/merajaprasad/blogging-app-deployment.git'
+                git branch: 'main', url: 'https://github.com/merajaprasad/java-application.git'
             }
         }
         stage('MVN Compile'){
